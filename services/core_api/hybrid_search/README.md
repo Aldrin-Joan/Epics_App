@@ -7,7 +7,7 @@ This directory contains the core Python modules for the Legal AI Retrieval and C
 | Module | Responsibility | Engine Type |
 | :--- | :--- | :--- |
 | `search_engine.py` | Hybrid Search Orchestrator | RRF-Fusion |
-| `llm_client.py` | Google Gemini 3 Flash Interface | LLM / Synthesis |
+| `llm_client.py` | Google Gemini Interface & Query Router | LLM / Synthesis / Routing |
 | `vector_store.py` | FAISS Indexing & Retrieval | Dense (MPNet) |
 | `storage_manager.py` | SQLite Case Persistence | Database |
 | `rag_pipeline.py` | One-shot RAG Pipeline | Contextual Generation |
@@ -19,10 +19,11 @@ This directory contains the core Python modules for the Legal AI Retrieval and C
 
 ```mermaid
 graph LR
-    Input[Query] --> PreProc[HyDE / Context Expansion]
-    PreProc --> Sparse[BM25 - Keywords]
-    PreProc --> Dense[Vector - Semantic]
-    PreProc --> Graph[PageRank - Importance]
+    Input[Query] --> PreProc[Query Router / Intent Classifier]
+    PreProc -->|Search| Sparse[BM25 - Keywords]
+    PreProc -->|Search| Dense[Vector - Semantic]
+    PreProc -->|Search| Graph[PageRank - Importance]
+    PreProc -->|Clarify / Direct| Output[Clarification or Zero-Shot Response]
     
     Sparse --> RRF[RRF Fusion]
     Dense --> RRF
@@ -42,11 +43,16 @@ We use **Reciprocal Rank Fusion (RRF)** to combine Sparse, Dense, and Graph resu
 - **Dense (MPNet)**: Captures semantic similarity (e.g., similar factual situations).
 - **Graph (PageRank)**: Weights cases by their citation influence.
 
-### 2. Gemini 3 Flash Preview
+### 2. Gemini Integration
 The `LLMClient` uses the new `google-genai` SDK. It features:
-- **Streaming Response support**: (WIP)
 - **Token Metadata tracking**: Monitors usage in real-time.
 - **JSON Mode**: Enforces structured outputs for categorization and entity extraction.
+
+### 3. Query Routing & Intent Classifier
+Using structured JSON mode, `llm_client.py` classifies incoming queries into three actions:
+- `search`: Triggers the FAISS and RRF retrieval pipeline for legal case research.
+- `clarify`: Requests additional details from the user when inputs are ambiguous or lacking context.
+- `respond`: Generates a direct plain-explanation/zero-shot response for general legal and conversational queries, avoiding redundant database searches.
 
 ---
 

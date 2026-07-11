@@ -25,12 +25,12 @@ Highlights:
 
 The current project direction supports several practical legal-tech workflows:
 
-- AI legal chat for guided legal support and question answering.
-- Lawyer discovery and client-to-lawyer communication flows.
+- AI legal chat for guided legal support, query routing (database search vs. general chat), and question answering with citations.
+- Lawyer discovery, real-time peer-to-peer (P2P) WebSocket communication, case status workflows, and interactive advocate-client feeds.
 - Document upload and review-oriented interactions.
-- Voice capture and transcription pipelines for hands-free input.
-- User and lawyer dashboards with localized mobile UX.
-- Authentication, profile management, notifications, help, and account-related app flows.
+- Voice capture, Whisper-based transcription, and spoken gTTS feedback pipelines for hands-free input.
+- User and lawyer dashboards with localized mobile UX and dynamic data integration.
+- Authentication (Firebase token-based auth), auto-provisioning Firestore/SQLite user profile management, notifications, help, and account-related app flows.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ The repository is organized as a monorepo so each layer can evolve independently
 graph TD
     subgraph Clients [Client Layer]
         MobileApp[apps/mobile_app <br> Flutter Mobile]
-        WebApp[apps/web_app <br> Web Playground]
+        WebApp[apps/web_app <br> React/Vite Dashboard]
     end
 
     subgraph Services [Service Layer]
@@ -55,27 +55,81 @@ graph TD
     end
 
     MobileApp -->|HTTP / WebSockets| FastAPI
-    WebApp -->|HTTP| FastAPI
+    WebApp -->|HTTP / WebSockets| FastAPI
     Streamlit -->|Internal Import / REST| HybridSearch
     FastAPI -->|Internal Import| HybridSearch
 
     HybridSearch -.->|Evaluation Data| Benchmarks
 ```
 
-### Additional flow view
+### Detailed Pipeline & Message Flows
+
+#### 1. Hybrid Retrieval & Intelligent Query Routing
+The RAG pipeline doesn't just run database lookups on every query. It employs an intent-based router to classify queries:
+- **Conversational Queries:** Handled directly via a Zero-Shot Generator for fast responses.
+- **Ambiguous Queries:** Trigger a Clarification Request back to the client.
+- **Search Queries:** Route to the Sparse-Dense-Graph hybrid retrieval engine.
 
 ```mermaid
-flowchart LR
-    User[User] --> Mobile[Flutter app]
-    User --> Web[Web app]
-    Mobile --> API[FastAPI backend]
-    Web --> API
-    API --> AI[Legal AI services]
-    API --> Search[Hybrid retrieval]
-    API --> Voice[Transcription / voice pipeline]
-    AI --> Docs[Legal guidance and support]
-    Search --> Docs
+flowchart TD
+    UserQuery[User Query / Voice Input] --> Router{Query Router / Intent Classifier}
+    
+    Router -->|Conversational / General| ZeroShot[Plain Explanation Generator]
+    Router -->|Ambiguous Request| Clarify[Clarification Request Prompt]
+    Router -->|Case Law Query| Ingestion[Hybrid Retrieval Engine]
+    
+    subgraph Retrieval [Sparse + Dense + Graph Search]
+        Ingestion --> Sparse[BM25 Sparse Keyword Search <br> SQLite FTS5]
+        Ingestion --> Dense[Dense Vector Search <br> FAISS + MPNet Embeddings]
+        Ingestion --> Graph[Graph Citation Weighting <br> PageRank Algorithm]
+    end
+
+    Sparse --> Fusion[Reciprocal Rank Fusion - RRF]
+    Dense --> Fusion
+    Graph --> Fusion
+
+    Fusion --> Hydrator[Context Hydration <br> Top-5 Cases Persisted in DB]
+    Hydrator --> LLM[Google Gemini Synthesis Engine]
+    LLM --> Response[Structured Legal opinion with Citations]
+    
+    ZeroShot --> FinalResponse[Final Response]
+    Clarify --> FinalResponse
+    Response --> FinalResponse
 ```
+
+#### 2. Real-Time Peer-to-Peer Chat Flow
+Messaging between clients and advocates utilizes token-authenticated WebSockets with a fallback REST API for robustness:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client App (Web/Mobile)
+    participant API as FastAPI Gateway
+    participant DB as SQLite (WAL Mode)
+    actor Advocate as Advocate Client
+
+    Client->>API: WS Connection to /ws/chat/{uid}?token=...
+    API->>API: Cryptographically verify Firebase Token
+    API-->>Client: Connection Accepted (Authenticated)
+    
+    Client->>API: WS Send Message (Receiver UID, Content, Idempotency ID)
+    API->>DB: Persist Message (Idempotent check)
+    alt Recipient is Online
+        API->>Advocate: Push message via WebSocket connection
+    else Recipient is Offline
+        API-->>Client: Message Persisted (REST Fallback mode ready)
+    end
+```
+
+---
+
+## ⚡ Core Technical Features & Optimizations
+
+- **SQLite WAL (Write-Ahead Logging) Mode:** Built-in automatic WAL mode configuration on local SQLite databases to handle high-throughput, concurrent reads and writes. This eliminates database locking issues during active peer-to-peer messaging.
+- **Cryptographic Security & Verification:** Every WebSocket connection and REST mutation is authenticated using Firebase User Tokens. Cross-user data access (such as chat histories) is prevented using ownership-gated route dependencies (IDOR protection).
+- **PageRank-Corrected Retrieval:** Incorporates PageRank centrality weights of Indian Supreme Court case networks to boost landmark rulings, preventing vector retrieval from getting lost in local semantic noise.
+- **Seamless Localized Translation & Voice Pipeline:** Converts voice audio from clients (Hindi, Tamil, etc.) using Whisper STT, translates to English for vector search/Gemini synthesis, translates the legal advice back to the client's language, and outputs high-fidelity gTTS audio with smart language fallbacks.
+
 
 ## Repository structure
 
@@ -111,9 +165,7 @@ The backend lives in `services/core_api` and is managed with `uv`.
 
 ```bash
 cd services/core_api
-uv venv
-.venv\Scripts\activate
-uv pip install -r requirements.txt -r requirements_hybrid.txt
+uv sync
 uv run app/main.py
 ```
 
@@ -152,7 +204,7 @@ Run backend tests from the core API service:
 
 ```bash
 cd services/core_api
-uv run pytest tests/test_backend.py
+uv run pytest
 ```
 
 ## Notes for reviewers

@@ -23,7 +23,13 @@ The master system walkthrough, covering:
 - How to execute multi-case RAG summaries
 - How to generate unstructured Case Briefs
 
+### 4. `DEPLOYMENT_GUIDE.md`
+Detailed production deployment configurations, building Docker container images, setting up Google Cloud Run, and database startup streaming from Google Cloud Storage.
+
+### 5. `api_documentation.md`
+A technical description of the backend REST and WebSocket endpoints, request/response models, and Firebase authentication verification.
+
 ---
 
 ## 🛠️ Usage
-These documents are best read in conjunction with the [Research Paper Modules](../research_paper) to understand the "Why" behind specific architecture decisions (e.g., why RRF-Fusion was used over direct interpolation).
+These documents are best read in conjunction with the [Research Paper Modules](../research_paper/README.md) to understand the "Why" behind specific architecture decisions (e.g., why RRF-Fusion was used over direct interpolation).

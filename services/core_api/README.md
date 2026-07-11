@@ -18,6 +18,7 @@ graph TD
         AuthRouter[api/auth_routes.py]
         WSInboxRouter[api/chat_ws.py]
         LegalApiRouter[api/legal_api.py]
+        HistoryRouter[api/history_api.py]
     end
 
     subgraph Services [Business Logic]
@@ -30,7 +31,7 @@ graph TD
     end
 
     Client -->|REST / WS Requests| Main
-    Main --> AuthRouter & WSInboxRouter & LegalApiRouter
+    Main --> AuthRouter & WSInboxRouter & LegalApiRouter & HistoryRouter
     LegalApiRouter --> AIService
     
     AIService --> Translation
@@ -54,11 +55,32 @@ graph TD
 
 ## 🚀 Running locally
 
-Run the FastAPI server using `uv`:
+### 1. Synchronize Dependencies
+Align the virtual environment dependencies with the `uv.lock` file:
+```bash
+uv sync
+```
+
+### 2. Run FastAPI Application
+Start the uvicorn development server:
 ```bash
 uv run app/main.py
 ```
-View interactive API schemas by opening `http://localhost:8001/docs`.
+The API is available at `http://localhost:8001`, and the interactive swagger documentation can be accessed at `http://localhost:8001/docs`.
+
+### 3. Run Integration & Security Tests
+Verify endpoints, ownership gates, and WebSocket channels using the pytest test suite:
+```bash
+uv run pytest
+```
+
+---
+
+## 🔒 Security & Concurrency Design
+
+- **SQLite WAL (Write-Ahead Logging):** Automatically activated when running on SQLite (`DATABASE_URL` is omitted). WAL mode allows concurrent reader threads during active database writes, preventing thread-blocking in high-throughput P2P chat workloads.
+- **Firebase Token Authentication & Firestore Integration:** Client authentication utilizes Firebase ID Tokens verified by the backend cryptographically. User profile details and role configurations are automatically resolved from Firestore.
+- **Ownership Gates (IDOR Protection):** Route dependencies verify that the caller is a party to the requested cases or chat threads, blocking unauthorized data access.
 
 ---
 

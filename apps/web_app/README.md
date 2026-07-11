@@ -15,6 +15,7 @@ Access the live web deployment at: **[https://lexai-3fd1a.web.app](https://lexai
 * **Firebase Authentication**: Support for secure Email/Password registration/login and native **Google Sign-In**.
 * **Auto-Provisioning Client Profiles**: Automatically spins up database records in Firestore (`/users/{uid}`) upon first sign-in (for both Google and email users) to track active sessions.
 * **Environment-Aware Core API**: Automatically directs API traffic to your local serverless proxy (`/core-api`) in development mode, and connects directly to the live serverless Cloud Run domain in production.
+* **Dynamic Cases & P2P Inbox**: Fully functional, real-time message inbox and case workflow management interfaces communicating with the FastAPI WebSocket and REST APIs (removing static mocks).
 
 ---
 
@@ -25,6 +26,9 @@ Access the live web deployment at: **[https://lexai-3fd1a.web.app](https://lexai
 * `/src/context/AuthContext.jsx`: Authentication context provider handling Firebase triggers, login status, and auto-profiling.
 * `/src/pages/AuthPage.jsx`: Beautiful glassmorphic design login and registration layout, including Google Sign-in buttons.
 * `/src/pages/LexAIChatPage.jsx`: Clean, responsive RAG chat console with source precedents and citations.
+* `/src/pages/InboxPage.jsx`: Real-time peer-to-peer workspace messaging console.
+* `/src/pages/CasesPage.jsx`: Case history tracker showing current status and transitions.
+* `/src/pages/LawyerFeed.jsx`: Interactive advocate directory and public cases feed.
 
 ---
 
