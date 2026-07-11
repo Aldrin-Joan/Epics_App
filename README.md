@@ -207,14 +207,28 @@ cd services/core_api
 uv run pytest
 ```
 
-## Notes for reviewers
+## 🔍 Notes for Reviewers
 
-This repository is best read as a product-and-engineering portfolio piece. It shows:
+This repository functions as a full-stack product-and-engineering portfolio. It is designed to demonstrate technical depth, product thinking, and clean systems architecture:
 
-- a clear problem domain,
-- a layered full-stack architecture,
-- UI clients for different platforms,
-- backend services with AI and retrieval components,
-- and supporting research artifacts that document the reasoning behind the system.
+### 🏛️ Engineering & Architecture Depth
+- **Monorepo Structure:** Clean division of responsibilities across the Flutter mobile app, React/Vite dashboard, and FastAPI backend layer.
+- **Database Concurrency:** Leverages SQLite **Write-Ahead Logging (WAL)** and normal synchronization mode to support high-throughput, concurrent reads and writes for messaging without database locking issues.
+- **Production-Ready Deployment:** Containerized backend running on **Google Cloud Run** using a startup streaming utility to dynamically load large search databases from Google Cloud Storage, keeping the Docker image footprint lightweight.
 
-That makes it suitable for recruiters who want to see both implementation depth and product thinking in one repo.
+### 🧠 Advanced RAG & AI Orchestration
+- **Hybrid Search Engine:** Combines sparse (BM25 FTS5), dense (FAISS with MPNet embeddings), and graph (PageRank citation centrality) modalities using **Reciprocal Rank Fusion (RRF)** to prevent retrieval drift.
+- **Intent Classifier Router:** Integrates structured JSON query classification to route traffic between RAG search pipelines, clarification loops, and zero-shot plain explanations.
+- **Multilingual Speech Loop:** Merges Whisper Speech-to-Text (STT) and Google Text-to-Speech (gTTS) with automatic language translations (Hindi, Tamil, Spanish, etc.) and fallback routes.
+
+### 🔒 Security & Verification
+- **Cryptographic Authentication:** Cryptographically validates Firebase ID user tokens on REST requests and WebSocket handshakes.
+- **IDOR Protection Gates:** Route dependencies perform strict verification matching user UIDs with database message/case resource ownership.
+- **Integration Testing:** Verified via a comprehensive test suite (`tests/test_security_and_cases.py`) checking state machines, ownership guards, and rate limits.
+
+### 🔬 Academic Rigor
+- **Evaluation Benchmarks:** Standardized metrics (Recall@10, NDCG) compiled across a batch of 5,255 baseline case evaluations and 10,000-case noise floor ablation runs.
+- **Academic Writing:** Modular draft sections for research paper submissions covering methodology, experimental setups, and critiques.
+
+---
+*Developed for the Advanced Agentic Coding initiative.*
