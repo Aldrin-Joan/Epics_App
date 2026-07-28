@@ -16,6 +16,8 @@ import LawyerFeed from './pages/LawyerFeed';
 import InboxPage from './pages/InboxPage';
 import CasesPage from './pages/CasesPage';
 import LexAIChatPage from './pages/LexAIChatPage';
+import InfoPage from './pages/InfoPage';
+import AboutPage from './pages/AboutPage';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -27,6 +29,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
           <Routes>
             {/* Public routes */}
+            <Route path="/info" element={<InfoPage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/lawyer-auth" element={<LawyerAuthPage />} />
 

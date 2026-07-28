@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../api/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { SparkleIcon } from '../components/Icons';
 import styles from './LawyerAuthPage.module.css';
 
 const DOMAINS = [
@@ -140,6 +141,30 @@ export default function LawyerAuthPage() {
   return (
     <div className={styles.page}>
       <div className="bg-orbs" />
+
+      {/* Top Floating Info Navigation Link */}
+      <Link to="/info" style={{
+        position: 'absolute',
+        top: '1.5rem',
+        right: '2rem',
+        zIndex: 50,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        fontSize: '0.85rem',
+        fontWeight: '600',
+        padding: '0.4rem 0.9rem',
+        borderRadius: '999px',
+        background: 'rgba(255, 255, 255, 0.06)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        color: '#FBBF24',
+        textDecoration: 'none',
+        backdropFilter: 'blur(8px)',
+        transition: 'all 0.2s ease'
+      }}>
+        <SparkleIcon size={14} color="#FBBF24" />
+        Platform Info & Tech Stack
+      </Link>
 
       <div className={styles.container}>
         {/* Header */}
