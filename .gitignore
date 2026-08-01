@@ -117,3 +117,14 @@ test_*.mp3
 # ============================================================
 .DS_Store
 Thumbs.db
+
+# ============================================================
+# Local Database and Interview Prep
+# ============================================================
+services/core_api/local_db.db
+services/core_api/local_db.db-shm
+services/core_api/local_db.db-wal
+*.db
+*.db-shm
+*.db-wal
+interview_prep/

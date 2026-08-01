@@ -244,32 +244,42 @@
 
 /* Input row */
 .inputRow {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.9rem 1.25rem;
-  border-top: 1px solid var(--glass-border);
-  background: rgba(11,15,25,0.8);
-  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11,15,25,0.9);
+  backdrop-filter: blur(20px);
+  margin-top: auto;
 }
 
 .msgInput {
   flex: 1;
-  background: rgba(15,23,42,0.7);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));
+  border: 1px solid rgba(251, 191, 36, 0.22);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
+  color: #F8FAFC;
   font-family: var(--font-body);
   font-size: 0.9rem;
   padding: 0.6rem 1rem;
   resize: none;
   max-height: 100px;
   outline: none;
-  transition: border-color var(--transition-base);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
   line-height: 1.5;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  caret-color: var(--amber);
 }
-.msgInput:focus { border-color: var(--amber); }
-.msgInput::placeholder { color: var(--text-muted); }
+.msgInput:focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.msgInput::placeholder { color: rgba(148, 163, 184, 0.65); }
 
 @media (max-width: 768px) {
   .contacts { display: none; }
