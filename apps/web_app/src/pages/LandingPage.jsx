@@ -2,57 +2,73 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './LandingPage.module.css';
 
-/* ---- Team members — fill in details later ---- */
+/* ---- Development Team Members ---- */
 const TEAM_MEMBERS = [
   {
     id: 1,
-    initial: 'A',
-    name: 'Team Member 1',
-    role: 'AI Architect',
-    bio: 'Designed the RAG pipeline and Hybrid Legal Search engine powering LexAI.',
-    github: null,
-    linkedin: null,
-    portfolio: null,
+    initial: 'AA',
+    name: 'Ayush Agarwal',
+    isLead: true,
+    leadBadge: 'Team Lead & Core Architect',
+    role: 'AI Software Engineer & Full-Stack AI Developer',
+    bio: 'Designed and developed production-grade AI systems powering LexAI, including the Hybrid RAG retrieval pipeline, FastAPI backend, cloud deployment, and AI workflow orchestration. Passionate about building scalable AI applications that solve real-world problems through intelligent automation.',
+    github: 'https://github.com/Ayush99392003',
+    linkedin: 'https://www.linkedin.com/in/ayush20039939',
+    portfolio: 'https://portfolio-bkco-1u0gliofd-ayush99392003s-projects.vercel.app/',
+    email: 'ayush20039939@gmail.com',
+    contributions: ['AI/ML & Hybrid RAG', 'FastAPI & Cloud', 'Full-Stack & Agents'],
   },
   {
     id: 2,
-    initial: 'B',
-    name: 'Team Member 2',
-    role: 'Legal Domain Lead',
-    bio: 'Curated and annotated 50,000+ Supreme Court judgements for the knowledge graph.',
-    github: null,
-    linkedin: null,
+    initial: 'NS',
+    name: 'Nyasa Singh',
+    isLead: false,
+    role: 'AI Engineer & NLP Developer',
+    bio: 'AI Engineer focused on building intelligent legal technologies using NLP, speech recognition, retrieval-augmented systems, and knowledge graphs for faster and more accurate legal assistance.',
+    github: 'https://github.com/Nyasa11',
+    linkedin: 'https://www.linkedin.com/in/nyasa-singh-29260a229/',
     portfolio: null,
+    email: 'nyasasingh11@gmail.com',
+    contributions: ['AI & NLP', 'Speech Recognition', 'Knowledge Graphs'],
   },
   {
     id: 3,
-    initial: 'C',
-    name: 'Team Member 3',
-    role: 'Full-Stack Engineer',
-    bio: 'Built the Firestore architecture, real-time WebSocket messaging, and API layer.',
-    github: null,
-    linkedin: null,
+    initial: 'VV',
+    name: 'Vartika Vashishtha',
+    isLead: false,
+    role: 'Frontend & Flutter Developer',
+    bio: 'Frontend and Flutter Developer contributing to LexAI, an AI-powered LegalTech platform, building responsive mobile and web interfaces for intelligent legal assistance.',
+    github: 'https://github.com/Vartika1612',
+    linkedin: 'https://www.linkedin.com/in/vartika-vashishtha-721704330/',
     portfolio: null,
+    email: 'vartikavashishtha48@gmail.com',
+    contributions: ['Chatbot UI & Auth', 'Dashboards', 'Flutter Mobile App'],
   },
   {
     id: 4,
-    initial: 'D',
-    name: 'Team Member 4',
-    role: 'UI/UX Design Lead',
-    bio: 'Crafted the deep-space glassmorphic design system and motion language of LexAI.',
-    github: null,
-    linkedin: null,
+    initial: 'AJ',
+    name: 'Aldrin Joan Pandian W',
+    isLead: false,
+    role: 'AI & Multi-Agent Systems Engineer',
+    bio: 'AI Engineer specializing in Natural Language Processing, Machine Learning, Generative AI (LLM fine-tuning), Multi-Agent Systems, LangChain/LangGraph, and full-stack mobile & web development.',
+    github: 'https://github.com/Aldrin-Joan',
+    linkedin: 'http://www.linkedin.com/in/aldrin-joan-pandian-w-08215028a',
     portfolio: null,
+    email: 'aldrinjoan6@gmail.com',
+    contributions: ['Generative AI & LLMs', 'Multi-Agent Systems', 'LangGraph & FastMCP'],
   },
   {
     id: 5,
-    initial: 'E',
-    name: 'Team Member 5',
-    role: 'Security & Compliance',
-    bio: 'Implemented end-to-end encryption, Bar Council compliance, and data privacy.',
-    github: null,
-    linkedin: null,
+    initial: 'AS',
+    name: 'Anushka Sarviya',
+    isLead: false,
+    role: 'AI & Backend Developer',
+    bio: 'AI and Backend Developer contributing to LexAI, building intelligent retrieval-augmented systems, backend APIs, and document intelligence solutions to provide accurate legal assistance through LLMs and semantic search.',
+    github: 'https://github.com/AnushkaSarviya',
+    linkedin: 'https://www.linkedin.com/in/anushkasarviya/',
     portfolio: null,
+    email: 'anushkasarviya@gmail.com',
+    contributions: ['Retrieval RAG & APIs', 'Semantic Search', 'Document Intelligence'],
   },
 ];
 
@@ -441,8 +457,7 @@ export default function LandingPage() {
               Meet the Development Team
             </h2>
             <p className={styles.sectionSub}>
-              Five engineers and legal technologists who built LexAI from the ground up.
-              Hover a card to learn more.
+              Engineers and legal technologists powering LexAI's AI retrieval, backend services, and multi-platform legal intelligence workspace.
             </p>
           </div>
 
@@ -450,20 +465,34 @@ export default function LandingPage() {
             {TEAM_MEMBERS.map((member, i) => (
               <div
                 key={member.id}
-                className={`${styles.flipCard} ${styles.reveal}`}
+                className={`${styles.flipCard} ${member.isLead ? styles.leadFlipCard : ''} ${styles.reveal}`}
                 style={{ transitionDelay: `${i * 0.1}s` }}
               >
                 <div className={styles.flipInner}>
                   {/* Front */}
-                  <div className={styles.flipFront}>
-                    <div className={styles.teamAvatar}>{member.initial}</div>
+                  <div className={`${styles.flipFront} ${member.isLead ? styles.leadFront : ''}`}>
+                    {member.isLead && (
+                      <div className={styles.leadTag}>⭐ Team Lead & Core Architect</div>
+                    )}
+                    <div className={`${styles.teamAvatar} ${member.isLead ? styles.leadAvatar : ''}`}>
+                      {member.initial}
+                    </div>
                     <div className={styles.teamName}>{member.name}</div>
                     <div className={styles.teamRole}>{member.role}</div>
-                    <div className={styles.teamHoverHint}>hover to learn more</div>
+
+                    {member.contributions && (
+                      <div className={styles.tagChips}>
+                        {member.contributions.map((chip, idx) => (
+                          <span key={idx} className={styles.tagChip}>{chip}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className={styles.teamHoverHint}>hover for bio & links</div>
                   </div>
 
                   {/* Back */}
-                  <div className={styles.flipBack}>
+                  <div className={`${styles.flipBack} ${member.isLead ? styles.leadBack : ''}`}>
                     <div className={styles.teamName}>{member.name}</div>
                     <div className={styles.teamRole}>{member.role}</div>
                     <p className={styles.teamBio}>{member.bio}</p>
@@ -475,7 +504,7 @@ export default function LandingPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          GitHub
+                          🐙 GitHub
                         </a>
                       )}
                       {member.linkedin && (
@@ -485,7 +514,7 @@ export default function LandingPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          LinkedIn
+                          💼 LinkedIn
                         </a>
                       )}
                       {member.portfolio && (
@@ -495,13 +524,16 @@ export default function LandingPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Portfolio
+                          🌐 Portfolio
                         </a>
                       )}
-                      {!member.github && !member.linkedin && !member.portfolio && (
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(148,163,184,0.4)' }}>
-                          Links coming soon
-                        </span>
+                      {member.email && (
+                        <a
+                          href={`mailto:${member.email}`}
+                          className={styles.teamLink}
+                        >
+                          ✉️ Email
+                        </a>
                       )}
                     </div>
                   </div>

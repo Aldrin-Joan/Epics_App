@@ -9,6 +9,33 @@ It combines a Flutter mobile experience, a React/Vite web workspace, and a FastA
 * **Web Application Workspace**: [https://lexai-3fd1a.web.app](https://lexai-3fd1a.web.app) (Deployed via Firebase Hosting, featuring Google Sign-In and real-time legal consultation queries)
 * **Production RAG API Backend**: [https://core-api-584212158273.asia-south1.run.app](https://core-api-584212158273.asia-south1.run.app) (FastAPI containerized service running on Google Cloud Run with 4GB RAM to load dense FAISS indices & sentence-transformers under full CORS authorization)
 
+## 👥 Development Team
+
+* **Ayush Agarwal** - **Team Lead & Core AI Developer**
+  * **Role:** AI Software Engineer & Full-Stack AI Developer
+  * **Contribution:** Designed & developed production-grade AI systems powering LexAI (80%+ core codebase), including Hybrid RAG retrieval pipeline, FastAPI backend, Cloud Run deployment, and AI workflow orchestration.
+  * **Links:** [GitHub](https://github.com/Ayush99392003) | [LinkedIn](https://www.linkedin.com/in/ayush20039939) | [Portfolio](https://portfolio-bkco-1u0gliofd-ayush99392003s-projects.vercel.app/) | Email: [ayush20039939@gmail.com](mailto:ayush20039939@gmail.com)
+
+* **Nyasa Singh** - **AI Engineer & NLP Developer**
+  * **Role:** AI Engineer & NLP Developer
+  * **Contribution:** Artificial Intelligence, NLP, Speech Recognition, Retrieval-Augmented Systems, and Knowledge Graphs for legal technologies.
+  * **Links:** [GitHub](https://github.com/Nyasa11) | [LinkedIn](https://www.linkedin.com/in/nyasa-singh-29260a229/) | Email: [nyasasingh11@gmail.com](mailto:nyasasingh11@gmail.com)
+
+* **Vartika Vashishtha** - **Frontend & Flutter Developer**
+  * **Role:** Frontend & Flutter Developer
+  * **Contribution:** Developed chatbot interface, authentication flows, and client/lawyer dashboards across Flutter mobile app and web.
+  * **Links:** [GitHub](https://github.com/Vartika1612) | [LinkedIn](https://www.linkedin.com/in/vartika-vashishtha-721704330/) | Email: [vartikavashishtha48@gmail.com](mailto:vartikavashishtha48@gmail.com)
+
+* **Aldrin Joan Pandian W** - **AI & Multi-Agent Systems Engineer**
+  * **Role:** AI & Multi-Agent Systems Engineer
+  * **Contribution:** NLP, Machine Learning, Generative AI (LLM fine-tuning), Multi-Agent Systems, LangChain/LangGraph, and full-stack mobile & web integration.
+  * **Links:** [GitHub](https://github.com/Aldrin-Joan) | [LinkedIn](http://www.linkedin.com/in/aldrin-joan-pandian-w-08215028a) | Email: [aldrinjoan6@gmail.com](mailto:aldrinjoan6@gmail.com)
+
+* **Anushka Sarviya** - **AI & Backend Developer**
+  * **Role:** AI & Backend Developer
+  * **Contribution:** Intelligent retrieval-augmented systems, backend APIs, document intelligence solutions, LLM integration, and semantic search.
+  * **Links:** [GitHub](https://github.com/AnushkaSarviya) | [LinkedIn](https://www.linkedin.com/in/anushkasarviya/) | Email: [anushkasarviya@gmail.com](mailto:anushkasarviya@gmail.com)
+
 ## Why this project stands out
 
 This codebase is more than a demo app. It presents a full-stack product direction with a recruiter-friendly story: a real-world problem space, a multi-platform UI layer, a Python backend, AI-assisted legal interaction, and a research-backed retrieval pipeline.
