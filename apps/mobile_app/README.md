@@ -46,6 +46,7 @@ graph TD
 2. **State Management**: Streamlined using **Riverpod** to reactively update network statuses and chat histories.
 3. **Localizations**: Supports 6 regional languages out-of-the-box (English, Hindi, Tamil, Telugu, Kannada, Malayalam).
 4. **WebSocket Real-time Inbox**: Direct messaging interface between clients and advocates.
+5. **Real-time P2P Chat & Case Workflows**: Supports live advocate chat, historical message threads, client-advocate profiling, and case state transitions.
 
 ---
 

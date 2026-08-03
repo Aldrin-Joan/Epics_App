@@ -55,6 +55,9 @@ Access the interactive Swagger documentation at `/docs` (e.g., `http://localhost
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/legal/voice-query` | Transcribes audio via Whisper, executes Hybrid RAG, and outputs spoken gTTS response. |
+| `GET` | `/legal/chat/history` | Fetches historical message threads between two users (ownership-gated). |
+| `POST` | `/legal/chat/send` | REST fallback for sending messages (idempotent via client_msg_id). |
+| `WS` | `/ws/chat/{user_id}` | Bidirectional WebSocket channel for P2P messaging and live AI feedback (Token-authenticated). |
 | `POST` | `/auth/register` | Register new user. |
 | `POST` | `/auth/token` | User login token retrieval. |
 | `GET` | `/health` | Core system health check. |
@@ -78,6 +81,8 @@ Create a `.env` file in the `services/core_api/` directory:
 ```env
 GOOGLE_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-1.5-flash
+# Optional: Omit DATABASE_URL to default to local SQLite with WAL mode enabled.
+DATABASE_URL=sqlite:///./local_db.db
 REDIS_HOST=your_redis_host (optional for remote sessions)
 ```
 

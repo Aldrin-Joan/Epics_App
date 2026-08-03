@@ -9,7 +9,9 @@ This directory houses the academic, benchmark, and design research behind the Hy
 ```mermaid
 graph TD
     Data[26,274 Judgments SQLite DB] --> Ingestion[Case Ingest & Index Ingestion]
-    Ingestion --> HybridRetrieval[Search Modality Evaluation]
+    Ingestion --> Router[Query Router / Intent Classifier]
+    Router -->|Database Search Required| HybridRetrieval[Search Modality Evaluation]
+    Router -->|General Conversational Query| General[Plain Explanation Generator]
     
     subgraph Modalities [Evaluated Search Modalities]
         Sparse[Sparse BM25]

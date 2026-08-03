@@ -1,31 +1,19 @@
-/**
- * InboxPage — real-time messaging between clients and advocates.
- *
- * - Selecting a contact loads their message history via GET /legal/chat/history.
- * - Sending a message first attempts delivery over the WebSocket.
- *   If the socket is disconnected, it falls back to POST /legal/chat/send.
- * - Messages are deduplicated by client_msg_id so that a page refresh or
- *   history fetch after a REST fallback never shows the same message twice.
- */
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { wsManager } from '../api/ws';
-import { getCases, getChatHistory, sendChatMessage } from '../api/legal';
+import { askLexAI } from '../api/legal';
+import {
+  collection, query, where, getDocs, doc, setDoc, addDoc, onSnapshot, orderBy
+} from 'firebase/firestore';
+import { db } from '../api/firebase';
 import {
   PaperclipIcon, SendIcon, SearchIcon,
   MessageIcon, UserIcon,
 } from '../components/Icons';
 import styles from './InboxPage.module.css';
-
-
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 const ago = (ts) => {
   const d = (Date.now() - ts) / 60000;
@@ -34,24 +22,11 @@ const ago = (ts) => {
   return `${Math.round(d / 60)}h`;
 };
 
-/**
- * Merge an incoming message into the current list, deduplicating by
- * client_msg_id. Returns the existing list unchanged if a message with
- * the same id is already present.
- *
- * @param {Array} prev - Existing messages array.
- * @param {object} msg - Incoming message object.
- * @returns {Array} Updated messages array.
- */
 function dedupeAppend(prev, msg) {
   if (!msg.client_msg_id) return [...prev, msg];
   if (prev.some((m) => m.client_msg_id === msg.client_msg_id)) return prev;
   return [...prev, msg];
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export default function InboxPage() {
   const { user, token } = useAuth();
@@ -68,17 +43,13 @@ export default function InboxPage() {
 
   const chatEndRef = useRef(null);
 
-  // ---------------------------------------------------------------------------
-  // Load Contacts list dynamically from active cases
-  // ---------------------------------------------------------------------------
-
+  /* ---- Load Contacts from Firestore ---- */
   const loadContacts = useCallback(async () => {
-    if (!token) return;
+    if (!user?.uid) return;
     try {
-      const casesData = await getCases(token);
       const uniqueContacts = new Map();
 
-      // Ensure LexAI is always available as the first contact
+      // LexAI AI Assistant contact
       uniqueContacts.set('ai', {
         id: 'ai',
         name: '⚖️ LexAI Assistant',
@@ -88,94 +59,60 @@ export default function InboxPage() {
         time: 'now',
       });
 
-      casesData.forEach((c) => {
-        // For client, show lawyer as contact; for advocate, show client.
-        const contactId = user?.isLawyer ? c.client_id : c.lawyer_id;
-        const contactName = user?.isLawyer ? c.client_name : c.lawyer_name;
-
+      // Load contacts from Firestore cases
+      const field = user.is_lawyer ? 'lawyer_id' : 'client_id';
+      const casesQ = query(collection(db, 'cases'), where(field, '==', user.uid));
+      const casesSnap = await getDocs(casesQ);
+      casesSnap.forEach((docSnap) => {
+        const c = docSnap.data();
+        const contactId = user.is_lawyer ? c.client_id : c.lawyer_id;
+        const contactName = user.is_lawyer ? c.client_name : c.lawyer_name;
         if (contactId && !uniqueContacts.has(contactId)) {
           uniqueContacts.set(contactId, {
             id: contactId,
-            name: contactName,
+            name: contactName || 'Advocate',
             lastMsg: c.summary,
             unread: 0,
             online: true,
-            time: ago(new Date(c.created_at).getTime()),
+            time: ago(new Date(c.created_at || Date.now()).getTime()),
           });
         }
       });
 
+      // Load lawyers from Firestore users collection if client
+      if (!user.is_lawyer) {
+        const lawyersQ = query(collection(db, 'users'), where('is_lawyer', '==', true));
+        const lawyersSnap = await getDocs(lawyersQ);
+        lawyersSnap.forEach((docSnap) => {
+          const l = docSnap.data();
+          if (docSnap.id !== user.uid && !uniqueContacts.has(docSnap.id)) {
+            uniqueContacts.set(docSnap.id, {
+              id: docSnap.id,
+              name: l.full_name || l.name || 'Advocate',
+              lastMsg: (l.practice_domains || []).join(', ') || 'Verified Advocate',
+              unread: 0,
+              online: true,
+              time: 'available',
+            });
+          }
+        });
+      }
+
       setContacts(Array.from(uniqueContacts.values()));
     } catch (err) {
-      console.warn('Failed to load active case contacts:', err);
+      console.error('Error loading Firestore contacts:', err);
     }
-  }, [token, user]);
+  }, [user]);
 
   useEffect(() => {
     loadContacts();
   }, [loadContacts]);
 
-  // ---------------------------------------------------------------------------
-  // WebSocket lifecycle
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (!user || !token) return;
-
-    // Connect with the Firebase token for server-side verification
-    wsManager.connect(`/ws/chat/${user.uid}`, token);
-
-    const offOpen  = wsManager.on('open', () => setConnected(true));
-    const offClose = wsManager.on('close', () => setConnected(false));
-    const offMsg   = wsManager.on('message', (data) => {
-      setTyping(false);
-      const content =
-        data.content ?? data.raw ?? JSON.stringify(data);
-      const incomingMsg = {
-        id: data.client_msg_id || Date.now(),
-        client_msg_id: data.client_msg_id || null,
-        sender: data.sender_id === user.uid ? 'user' : 'ai',
-        text: content,
-        ts: data.timestamp ? new Date(data.timestamp).getTime() : Date.now(),
-      };
-      setMessages((prev) => dedupeAppend(prev, incomingMsg));
-    });
-
-    return () => {
-      offOpen();
-      offClose();
-      offMsg();
-      wsManager.disconnect();
-    };
-  }, [user, token]);
-
-  // ---------------------------------------------------------------------------
-  // Reconnect on WebSocket 4001 (session expired)
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    const offClose = wsManager.on('close', async () => {
-      if (!user || !token) return;
-      // The wsManager auto-reconnects with the same token; for a 4001
-      // expiry, the AuthContext will have refreshed the token automatically
-      // via Firebase's onAuthStateChanged.  The next reconnect attempt
-      // in wsManager._open() will carry the new token.
-    });
-    return () => offClose();
-  }, [user, token]);
-
-  // ---------------------------------------------------------------------------
-  // Scroll to bottom on new messages
-  // ---------------------------------------------------------------------------
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typing]);
 
-  // ---------------------------------------------------------------------------
-  // Load chat history when switching contacts
-  // ---------------------------------------------------------------------------
-
+  /* ---- Load chat history from Firestore ---- */
   const selectContact = useCallback(
     async (c) => {
       setActiveId(c.id);
@@ -184,39 +121,49 @@ export default function InboxPage() {
         prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x)),
       );
 
-      if (c.id === 'ai') {
-        // LexAI has no REST history — start fresh
-        return;
-      }
+      if (c.id === 'ai') return;
+      if (!user?.uid) return;
 
-      if (!token) return;
       setHistoryLoading(true);
       try {
-        const history = await getChatHistory(token, c.id);
-        const normalised = history.map((m) => ({
+        const q1 = query(
+          collection(db, 'direct_messages'),
+          where('sender_id', '==', user.uid),
+          where('receiver_id', '==', c.id)
+        );
+        const q2 = query(
+          collection(db, 'direct_messages'),
+          where('sender_id', '==', c.id),
+          where('receiver_id', '==', user.uid)
+        );
+
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+        const list = [];
+        snap1.forEach((d) => list.push({ id: d.id, ...d.data() }));
+        snap2.forEach((d) => list.push({ id: d.id, ...d.data() }));
+
+        list.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+        const normalised = list.map((m) => ({
           id: m.id,
-          client_msg_id: m.client_msg_id,
-          sender: m.sender_id === user?.uid ? 'user' : 'ai',
+          client_msg_id: m.client_msg_id || m.id,
+          sender: m.sender_id === user.uid ? 'user' : 'ai',
           text: m.content,
-          ts: new Date(m.timestamp).getTime(),
+          ts: new Date(m.created_at || Date.now()).getTime(),
         }));
         setMessages(normalised);
       } catch (err) {
-        console.warn('getChatHistory failed:', err);
-        toast('Could not load message history.', 'error');
+        console.error('Error fetching Firestore direct_messages:', err);
       } finally {
         setHistoryLoading(false);
       }
     },
-    [token, user, toast],
+    [user],
   );
 
-  // ---------------------------------------------------------------------------
-  // Send a message
-  // ---------------------------------------------------------------------------
-
+  /* ---- Send message ---- */
   const sendMsg = useCallback(async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user?.uid) return;
     const text = input.trim();
     const clientMsgId = uuidv4();
     setInput('');
@@ -231,71 +178,47 @@ export default function InboxPage() {
     setMessages((prev) => dedupeAppend(prev, userMsg));
 
     if (activeId === 'ai') {
-      // Route via WebSocket to the AI handler
       setTyping(true);
-      if (wsManager.isOpen) {
-        wsManager.send(
-          JSON.stringify({
-            receiver_id: 'ai',
-            content: text,
-            client_msg_id: clientMsgId,
+      try {
+        const data = await askLexAI(text);
+        const aiMsg = {
+          id: uuidv4(),
+          client_msg_id: null,
+          sender: 'ai',
+          text: data.answer || 'Response generated.',
+          ts: Date.now(),
+        };
+        setTyping(false);
+        setMessages((prev) => dedupeAppend(prev, aiMsg));
+      } catch (err) {
+        setTyping(false);
+        setMessages((prev) =>
+          dedupeAppend(prev, {
+            id: uuidv4(),
+            client_msg_id: null,
+            sender: 'ai',
+            text: 'I have received your query. Please consult a verified advocate for personalized legal advice.',
+            ts: Date.now(),
           }),
         );
-      } else {
-        // Offline AI fallback
-        setTimeout(() => {
-          setTyping(false);
-          setMessages((prev) =>
-            dedupeAppend(prev, {
-              id: uuidv4(),
-              client_msg_id: null,
-              sender: 'ai',
-              text: 'Thank you for your query. Let me analyze the relevant legal provisions for you.',
-              ts: Date.now(),
-            }),
-          );
-        }, 1600);
       }
       return;
     }
 
-    // P2P message — try WebSocket first
-    if (wsManager.isOpen) {
-      wsManager.send(
-        JSON.stringify({
-          receiver_id: activeId,
-          content: text,
-          client_msg_id: clientMsgId,
-        }),
-      );
-    } else if (token) {
-      // REST fallback when socket is disconnected
-      try {
-        const saved = await sendChatMessage(token, {
-          receiverId: activeId,
-          content: text,
-          clientMsgId,
-        });
-        // Dedup is already enforced — the response will match clientMsgId
-        // so dedupeAppend won't double-add it
-        setMessages((prev) =>
-          dedupeAppend(prev, {
-            id: saved.id,
-            client_msg_id: saved.client_msg_id,
-            sender: 'user',
-            text: saved.content,
-            ts: new Date(saved.timestamp).getTime(),
-          }),
-        );
-      } catch (err) {
-        toast('Failed to send message. Please retry.', 'error');
-        // Remove the optimistic message on failure
-        setMessages((prev) =>
-          prev.filter((m) => m.client_msg_id !== clientMsgId),
-        );
-      }
+    // Save direct message to Firestore
+    try {
+      await addDoc(collection(db, 'direct_messages'), {
+        sender_id: user.uid,
+        receiver_id: activeId,
+        content: text,
+        client_msg_id: clientMsgId,
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error saving direct message in Firestore:', err);
+      toast('Failed to deliver message via Firestore.', 'error');
     }
-  }, [input, activeId, token, toast]);
+  }, [input, activeId, user, toast]);
 
   const handleKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

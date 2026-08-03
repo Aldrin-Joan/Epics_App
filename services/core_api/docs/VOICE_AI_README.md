@@ -72,3 +72,4 @@ Instead of just sending a raw text prompt to an LLM, this pipeline:
 - Natively supports rural and non-English users instantly.
 - **Eliminates "hallucinations"** by forcing the Knowledge Graph to inject guaranteed legal Sections and Case laws before the prompt is processed by the vector database.
 - Provides a fully localized voice experience using open-source, locally hosted tools (Whisper + gTTS).
+- **Intelligent Query Routing:** Detects whether a query is conversational (generating a direct plain-explanation reply) or legal/retrieval-heavy (triggering the full FAISS + hybrid search pipeline).

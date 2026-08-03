@@ -17,10 +17,10 @@ import styles from './ClientWorkspace.module.css';
 
 const SEARCH_MODES = ['Keyword', 'Semantic', 'Hybrid', 'Ultra'];
 
-const SAMPLE_LAWYERS = [
-  { id: 1, name: 'Adv. Ravi Sharma', domains: ['Criminal', 'Constitutional'], online: true, exp: 8 },
-  { id: 2, name: 'Adv. Priya Mehta', domains: ['Corporate', 'Tax'], online: true, exp: 12 },
-  { id: 3, name: 'Adv. Suresh Nair', domains: ['Family', 'Civil'], online: false, exp: 5 },
+const DEFAULT_ADVOCATES = [
+  { id: 'lawyer_ravi_sharma', full_name: 'Adv. Ravi Sharma', username: 'adv_ravi', practice_domains: ['Criminal', 'Constitutional'], years_of_experience: 8, online: true, is_lawyer: true },
+  { id: 'lawyer_priya_mehta', full_name: 'Adv. Priya Mehta', username: 'adv_priya', practice_domains: ['Corporate', 'Tax'], years_of_experience: 12, online: true, is_lawyer: true },
+  { id: 'lawyer_suresh_nair', full_name: 'Adv. Suresh Nair', username: 'adv_suresh', practice_domains: ['Family', 'Civil'], years_of_experience: 5, online: false, is_lawyer: true },
 ];
 
 const TIP_CARDS = [
@@ -126,8 +126,36 @@ export default function ClientWorkspace() {
 
   // UI states
   const [chatMode, setChatMode]   = useState(false);   // home → chat transition
-  const [lawyers, setLawyers]     = useState(SAMPLE_LAWYERS);
+  const [lawyers, setLawyers]     = useState([]);
   const chatEndRef = useRef(null);
+
+  /* ---- Load Advocates from Firestore ---- */
+  const loadLawyers = useCallback(async () => {
+    try {
+      const q = query(collection(db, 'users'), where('is_lawyer', '==', true));
+      const querySnapshot = await getDocs(q);
+      const list = [];
+      querySnapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      if (list.length === 0) {
+        // Seed default advocates into Firestore if collection is empty
+        for (const adv of DEFAULT_ADVOCATES) {
+          await setDoc(doc(db, 'users', adv.id), adv).catch(() => {});
+        }
+        setLawyers(DEFAULT_ADVOCATES);
+      } else {
+        setLawyers(list);
+      }
+    } catch (err) {
+      console.error('Error fetching lawyers from Firestore:', err);
+      setLawyers(DEFAULT_ADVOCATES);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLawyers();
+  }, [loadLawyers]);
 
   /* ---- Sessions Loader ---- */
   /* ---- Sessions Loader ---- */
@@ -396,35 +424,70 @@ export default function ClientWorkspace() {
               </div>
               <span className="badge badge-green">Live</span>
             </div>
-            {lawyers.map((l) => (
-              <div key={l.id} className={styles.lawyerCard}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                  <div className={styles.lawyerAvatar}>
-                    {l.name.split(' ')[1]?.[0] ?? 'A'}
-                    {l.online && <span className={styles.onlineDot} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div className={styles.lawyerName}>{l.name}</div>
-                    <div className={styles.lawyerDomains}>
-                      {l.domains.map((d) => (
-                        <span key={d} className="badge badge-amber" style={{ fontSize: '0.65rem' }}>{d}</span>
-                      ))}
+            {lawyers.map((l) => {
+              const name = l.full_name || l.name || 'Advocate';
+              const domains = l.practice_domains || l.domains || ['General'];
+              const exp = l.years_of_experience || l.exp || 5;
+              const avatarInitial = (name.split(' ')[1]?.[0] || name[0] || 'A').toUpperCase();
+
+              return (
+                <div key={l.id} className={styles.lawyerCard}>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <div className={styles.lawyerAvatar}>
+                      {avatarInitial}
+                      {l.online && <span className={styles.onlineDot} />}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                      {l.exp} yrs experience
+                    <div style={{ flex: 1 }}>
+                      <div className={styles.lawyerName}>{name}</div>
+                      <div className={styles.lawyerDomains}>
+                        {domains.map((d) => (
+                          <span key={d} className="badge badge-amber" style={{ fontSize: '0.65rem' }}>{d}</span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        {exp} yrs experience
+                      </div>
                     </div>
                   </div>
+                  <button
+                    id={`consult-lawyer-${l.id}`}
+                    className="btn btn-amber btn-sm btn-full"
+                    style={{ marginTop: '0.75rem' }}
+                    onClick={async () => {
+                      if (!user?.uid) {
+                        toast('Please sign in to request a consultation.', 'error');
+                        return;
+                      }
+                      const summary = prompt(`Briefly describe your legal query for ${name}:`);
+                      if (!summary || summary.trim().length < 5) {
+                        toast('Please enter a brief legal query.', 'error');
+                        return;
+                      }
+                      try {
+                        const caseRef = doc(collection(db, 'cases'));
+                        await setDoc(caseRef, {
+                          client_id: user.uid,
+                          client_name: user.full_name || user.email?.split('@')[0] || 'Client',
+                          lawyer_id: l.id,
+                          lawyer_name: name,
+                          summary: summary.trim(),
+                          status: 'submitted',
+                          current_stage: 'submitted',
+                          created_at: new Date().toISOString(),
+                          updated_at: new Date().toISOString(),
+                        });
+                        toast(`Consultation case requested with ${name}! Check "My Cases" to track status.`, 'success');
+                      } catch (err) {
+                        console.error('Error saving case to Firestore:', err);
+                        toast('Failed to record consultation request in Firestore.', 'error');
+                      }
+                    }}
+                  >
+                    Consult Now
+                  </button>
                 </div>
-                <button
-                  id={`consult-lawyer-${l.id}`}
-                  className="btn btn-amber btn-sm btn-full"
-                  style={{ marginTop: '0.75rem' }}
-                  onClick={() => toast(`Connecting to ${l.name}...`, 'info')}
-                >
-                  Consult Now
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Saved Transcripts */}

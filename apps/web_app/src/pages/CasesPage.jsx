@@ -1,26 +1,11 @@
-/**
- * CasesPage — case management for clients and advocates.
- *
- * Clients see their consultation timeline with live stage progress.
- * Advocates see incoming requests with accept/decline actions and a
- * stage advancement dropdown for accepted cases.
- *
- * All data is fetched from the backend on mount and after every
- * state-changing action (accept, decline, stage update). Mock data
- * is only used as a fallback if the API is unreachable.
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import {
-  getCases,
-  submitCaseRequest,
-  resolveCase,
-  updateCaseStage,
-  getPosts,
-} from '../api/legal';
+  collection, query, where, getDocs, doc, setDoc, updateDoc
+} from 'firebase/firestore';
+import { db } from '../api/firebase';
 import styles from './CasesPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -53,8 +38,6 @@ const TIMELINE_STAGES = [
   'completed',
 ];
 
-
-
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -65,7 +48,7 @@ function ClientTimeline({ c }) {
     <div className={styles.caseCard}>
       <div className={styles.caseCardHeader}>
         <div>
-          <div className={styles.caseTitle}>Case #{c.id}</div>
+          <div className={styles.caseTitle}>Case #{c.id?.slice(0, 8) || 'Doc'}</div>
           <div className={styles.caseLawyer}>👨‍⚖️ {c.lawyer_name}</div>
           <p className={styles.caseSummary}>{c.summary}</p>
         </div>
@@ -105,7 +88,7 @@ function ClientTimeline({ c }) {
       )}
 
       <div className={styles.caseDate}>
-        Filed: {new Date(c.created_at).toLocaleDateString()}
+        Filed: {new Date(c.created_at || Date.now()).toLocaleDateString()}
       </div>
     </div>
   );
@@ -125,7 +108,7 @@ function LawyerInquiryCard({ inq, onAccept, onDecline, onStageChange }) {
           <div className={styles.caseTitle}>👤 {inq.client_name}</div>
           <p className={styles.caseSummary}>{inq.summary}</p>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            {new Date(inq.created_at).toLocaleDateString()}
+            {new Date(inq.created_at || Date.now()).toLocaleDateString()}
           </div>
         </div>
         <span className={`badge ${STAGE_COLORS[localStatus] || 'badge-amber'}`}>
@@ -188,39 +171,52 @@ function LawyerInquiryCard({ inq, onAccept, onDecline, onStageChange }) {
 // ---------------------------------------------------------------------------
 
 export default function CasesPage() {
-  const { user, token, isLawyer } = useAuth();
+  const { user, isLawyer } = useAuth();
   const toast = useToast();
 
-  const [cases, setCases]     = useState([]);
-  const [lawyers, setLawyers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [cases, setCases]           = useState([]);
+  const [lawyers, setLawyers]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [domainFilter, setDomainFilter] = useState('');
 
-  /** Fetch cases from the backend and update state. */
+  /** Fetch cases directly from Firestore. */
   const loadCases = useCallback(async () => {
-    if (!token) return;
+    if (!user?.uid) return;
     setLoading(true);
     try {
-      const data = await getCases(token);
-      setCases(data);
+      const field = isLawyer ? 'lawyer_id' : 'client_id';
+      const q = query(collection(db, 'cases'), where(field, '==', user.uid));
+      const snap = await getDocs(q);
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      setCases(list);
     } catch (err) {
-      console.warn('getCases API error, using empty list:', err);
+      console.error('Firestore loadCases error:', err);
       setCases([]);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user, isLawyer]);
 
-  /** Fetch verified advocates list from backend. */
+  /** Fetch verified advocates list from Firestore. */
   const loadLawyers = useCallback(async () => {
-    if (!token || isLawyer) return;
+    if (isLawyer) return;
     try {
-      const data = await getLawyers(token);
-      setLawyers(data);
+      const q = query(collection(db, 'users'), where('is_lawyer', '==', true));
+      const snap = await getDocs(q);
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setLawyers(list);
     } catch (err) {
-      console.warn('getLawyers API error:', err);
+      console.error('Firestore loadLawyers error:', err);
       setLawyers([]);
     }
-  }, [token, isLawyer]);
+  }, [isLawyer]);
 
   useEffect(() => {
     loadCases();
@@ -231,62 +227,86 @@ export default function CasesPage() {
 
   const handleAccept = async (caseId) => {
     try {
-      await resolveCase(token, caseId, 'accept');
-      toast('Case accepted!', 'success');
+      await updateDoc(doc(db, 'cases', caseId), {
+        status: 'accepted',
+        current_stage: 'accepted',
+        updated_at: new Date().toISOString(),
+      });
+      toast('Case accepted in Firestore!', 'success');
       loadCases();
     } catch (err) {
-      toast(err?.response?.data?.detail || 'Failed to accept case.', 'error');
+      console.error('Error accepting case in Firestore:', err);
+      toast('Failed to accept case.', 'error');
     }
   };
 
   const handleDecline = async (caseId) => {
     try {
-      await resolveCase(token, caseId, 'decline');
+      await updateDoc(doc(db, 'cases', caseId), {
+        status: 'declined',
+        current_stage: 'declined',
+        updated_at: new Date().toISOString(),
+      });
       toast('Case declined.', 'info');
       loadCases();
     } catch (err) {
-      toast(err?.response?.data?.detail || 'Failed to decline case.', 'error');
+      console.error('Error declining case in Firestore:', err);
+      toast('Failed to decline case.', 'error');
     }
   };
 
   const handleStageChange = async (caseId, stage) => {
     try {
-      await updateCaseStage(token, caseId, stage);
+      await updateDoc(doc(db, 'cases', caseId), {
+        current_stage: stage,
+        status: stage === 'completed' ? 'completed' : 'accepted',
+        updated_at: new Date().toISOString(),
+      });
       toast(`Stage updated to "${STAGE_LABELS[stage] || stage}"`, 'success');
       loadCases();
     } catch (err) {
-      toast(
-        err?.response?.data?.detail || 'Stage transition not permitted.',
-        'error',
-      );
+      console.error('Error updating case stage in Firestore:', err);
+      toast('Failed to update stage.', 'error');
     }
   };
 
   // --- Consult shortcut (client sidebar) ---
   const handleRequestConsult = async (lawyer) => {
-    if (!token) return;
-    const summary = prompt(
-      `Briefly describe your situation for ${lawyer.name}:`,
-    );
-    if (!summary || summary.trim().length < 10) {
-      toast('Please provide at least 10 characters.', 'error');
+    if (!user?.uid) return;
+    const name = lawyer.full_name || lawyer.name || lawyer.username || 'Advocate';
+    const summary = prompt(`Briefly describe your situation for ${name}:`);
+    if (!summary || summary.trim().length < 5) {
+      toast('Please provide a query summary.', 'error');
       return;
     }
     try {
-      await submitCaseRequest(token, {
-        lawyerId: `lawyer-${lawyer.id}`, // placeholder — real UID once lawyer dir is live
-        lawyerName: lawyer.name,
-        querySummary: summary,
+      const caseRef = doc(collection(db, 'cases'));
+      await setDoc(caseRef, {
+        client_id: user.uid,
+        client_name: user.full_name || user.username || user.email?.split('@')[0] || 'Client',
+        lawyer_id: lawyer.id,
+        lawyer_name: name,
+        summary: summary.trim(),
+        status: 'submitted',
+        current_stage: 'submitted',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
-      toast(`Consultation request sent to ${lawyer.name}!`, 'success');
+      toast(`Consultation case requested with ${name}!`, 'success');
       loadCases();
     } catch (err) {
-      toast(
-        err?.response?.data?.detail || 'Failed to submit request.',
-        'error',
-      );
+      console.error('Error creating case in Firestore:', err);
+      toast('Failed to submit consultation request in Firestore.', 'error');
     }
   };
+
+  const filteredLawyers = lawyers.filter((l) => {
+    if (!domainFilter.trim()) return true;
+    const term = domainFilter.toLowerCase();
+    const name = (l.full_name || l.name || '').toLowerCase();
+    const domains = (l.practice_domains || l.domains || []).join(' ').toLowerCase();
+    return name.includes(term) || domains.includes(term);
+  });
 
   // ---------------------------------------------------------------------------
   // Render
@@ -344,13 +364,18 @@ export default function CasesPage() {
             <input
               className="glass-input"
               placeholder="Filter by domain…"
+              value={domainFilter}
+              onChange={(e) => setDomainFilter(e.target.value)}
               style={{ marginBottom: '1rem' }}
             />
             <div className={styles.lawyerGrid}>
-              {lawyers.map((l) => {
-                const nameParts = l.name.split(' ');
-                const avatarChar = nameParts.length > 1 ? nameParts[nameParts.length - 1][0] : l.name[0];
-                const domainsList = l.domains || (l.specialization ? [l.specialization] : ['General Practice']);
+              {filteredLawyers.map((l) => {
+                const name = l.full_name || l.name || l.username || 'Advocate';
+                const nameParts = name.split(' ');
+                const avatarChar = (nameParts.length > 1 ? nameParts[nameParts.length - 1][0] : name[0] || 'A').toUpperCase();
+                const domainsList = l.practice_domains || l.domains || (l.specialization ? [l.specialization] : ['General Law']);
+                const expText = l.years_of_experience ? `${l.years_of_experience} yrs exp` : (l.exp ? `${l.exp} yrs exp` : '5+ yrs exp');
+
                 return (
                   <div key={l.id} className={styles.lawyerCard}>
                     <div className={styles.lawyerTop}>
@@ -359,9 +384,9 @@ export default function CasesPage() {
                         {l.online && <span className={styles.onlineDot} />}
                       </div>
                       <div>
-                        <div className={styles.lawyerName}>{l.name}</div>
+                        <div className={styles.lawyerName}>{name}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {l.exp || (l.rating ? `${l.rating} ★` : '5+ yrs')}
+                          {expText}
                         </div>
                       </div>
                     </div>

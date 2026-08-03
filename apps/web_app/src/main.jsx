@@ -16,8 +16,8 @@ import LawyerFeed from './pages/LawyerFeed';
 import InboxPage from './pages/InboxPage';
 import CasesPage from './pages/CasesPage';
 import LexAIChatPage from './pages/LexAIChatPage';
-import InfoPage from './pages/InfoPage';
-import AboutPage from './pages/AboutPage';
+import LandingPage from './pages/LandingPage';
+import LegalVeil from './components/PageTransition/LegalVeil';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -26,6 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <ToastProvider>
           {/* Live particle canvas — renders behind everything */}
           <ParticleCanvas />
+
+          {/* Cinematic page transition overlay */}
+          <LegalVeil />
 
           <Routes>
             {/* Public routes */}
@@ -90,9 +93,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               }
             />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/auth" replace />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
+            {/* Landing page — public */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>
