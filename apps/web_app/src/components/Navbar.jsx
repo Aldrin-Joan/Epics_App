@@ -5,6 +5,7 @@ import {
   ScalesIcon, MessageIcon, FolderIcon,
   BriefcaseIcon, UserIcon, LogOutIcon,
   GridIcon, ChevronDownIcon, SparkleIcon,
+  InfoIcon,
 } from './Icons';
 import styles from './Navbar.module.css';
 
@@ -59,6 +60,8 @@ export default function Navbar() {
     { to: '/lexai',     label: 'LexAI Chat',   icon: <SparkleIcon size={16} /> },
     { to: '/cases',     label: 'My Cases',     icon: <FolderIcon size={16} /> },
     { to: '/inbox',     label: 'Inbox',        icon: <MessageIcon size={16} /> },
+    { to: '/info',      label: 'Platform Info',icon: <InfoIcon size={16} /> },
+    { to: '/about',     label: 'About Team',   icon: <UserIcon size={16} /> },
   ];
 
   const lawyerLinks = [
@@ -66,6 +69,8 @@ export default function Navbar() {
     { to: '/lexai',  label: 'LexAI Chat',     icon: <SparkleIcon size={16} /> },
     { to: '/cases',  label: 'Case Inquiries', icon: <BriefcaseIcon size={16} /> },
     { to: '/inbox',  label: 'Inbox',          icon: <MessageIcon size={16} /> },
+    { to: '/info',   label: 'Platform Info',  icon: <InfoIcon size={16} /> },
+    { to: '/about',  label: 'About Team',     icon: <UserIcon size={16} /> },
   ];
 
   const links = isLawyer ? lawyerLinks : customerLinks;

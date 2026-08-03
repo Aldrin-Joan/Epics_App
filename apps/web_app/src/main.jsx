@@ -32,6 +32,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
           <Routes>
             {/* Public routes */}
+            <Route path="/info" element={<InfoPage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/lawyer-auth" element={<LawyerAuthPage />} />
 

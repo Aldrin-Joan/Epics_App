@@ -174,6 +174,30 @@ export default function AuthPage() {
     <div className={styles.page}>
       <div className="bg-orbs" />
 
+      {/* Top Floating Info Navigation Link */}
+      <Link to="/info" className={styles.infoTopLink} style={{
+        position: 'absolute',
+        top: '1.5rem',
+        right: '2rem',
+        zIndex: 50,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        fontSize: '0.85rem',
+        fontWeight: '600',
+        padding: '0.4rem 0.9rem',
+        borderRadius: '999px',
+        background: 'rgba(255, 255, 255, 0.06)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        color: '#FBBF24',
+        textDecoration: 'none',
+        backdropFilter: 'blur(8px)',
+        transition: 'all 0.2s ease'
+      }}>
+        <SparkleIcon size={14} color="#FBBF24" />
+        Platform Info & Tech Stack
+      </Link>
+
       {/* LEFT — Brand Pane */}
       <div className={styles.left}>
         <div className={styles.brandArea}>
